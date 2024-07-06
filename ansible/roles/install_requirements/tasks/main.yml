@@ -1,0 +1,5 @@
+- name: setting container runtime
+  import_tasks: container_runtime.yml
+
+- name: setting kubeadm
+  import_tasks: kubeadm.yml

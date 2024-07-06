@@ -1,0 +1,10 @@
+#!myansible/bin/ansible-playbook
+
+- hosts: "ENV_{{ ENVIRONMENT | default('DEV') }}"
+  become: True
+  tasks:
+    - name: set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+  roles:
+    - role: install_requirements

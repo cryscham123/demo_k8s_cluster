@@ -1,0 +1,74 @@
+- name: Load module
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Set sysctl settings for Kubernetes
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+
+- block:
+  - name: Create directory for Docker GPG key
+    file:
+      path: /etc/apt/keyrings
+      state: directory
+      mode: '0755'
+
+  - name: Download Docker's official GPG key
+    get_url:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      dest: /etc/apt/keyrings/docker.asc
+      mode: '0644'
+
+  - name: Add Docker repository
+    apt_repository:
+      repo: "deb [arch={{ deb_architecture[ansible_architecture] }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      filename: docker
+
+  - name: Install containerD
+    apt:
+      name:
+        - containerd.io
+      state: present
+
+  - name: configure systemd cgroup driver
+    copy:
+      content: |
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+      dest: /etc/containerd/config.toml
+    notify: Restart containerd
+
+  rescue:
+    - name: Remove GPG key
+      file: 
+        path: /etc/apt/keyrings/docker.asc
+        state: absent
+
+    - name: Remove Docker repository
+      apt_repository:
+        repo: "deb [arch={{ deb_architecture[ansible_architecture] }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        filename: docker
+        state: absent
+    
+    - name: Remove containerD
+      apt:
+        name: containerd.io
+        state: absent
+
+    - name: Remove systemd cgroup driver configuration
+      file:
+        path: /etc/containerd/config.toml
+        state: absent

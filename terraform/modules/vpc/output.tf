@@ -3,17 +3,17 @@ output "vpc_id" {
   value       = aws_vpc.main_vpc.id
 }
 
-output "public-1_subnets" {
+output "public_subnets" {
   description = "ID of public subnets"
-  value       = aws_subnet.public-1.id
+  value       = aws_subnet.public.id
 }
 
-output "public-2_subnets" {
-  description = "ID of public subnets"
-  value       = aws_subnet.public-2.id
+output "master_sg_id" {
+  description = "ID of master security group"
+  value       = aws_security_group.master_sg.id
 }
 
-output "default_sg_id" {
-  description = "ID of default security group"
-  value       = aws_security_group.default_sg.id
+output "worker_sg_id" {
+  description = "ID of worker security group"
+  value       = aws_security_group.worker_sg.id
 }

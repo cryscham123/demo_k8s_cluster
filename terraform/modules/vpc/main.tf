@@ -8,22 +8,11 @@ resource "aws_vpc" "main_vpc" {
   }
 }
 
-resource "aws_subnet" "public-1" {
+resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = "true"
   availability_zone       = "${var.AWS_REGION}a"
-
-  tags = {
-    Name = "public-${var.ENVIRONMENT}"
-  }
-}
-
-resource "aws_subnet" "public-2" {
-  vpc_id                  = aws_vpc.main_vpc.id
-  cidr_block              = "10.0.2.0/24"
-  map_public_ip_on_launch = "true"
-  availability_zone       = "${var.AWS_REGION}c"
 
   tags = {
     Name = "public-${var.ENVIRONMENT}"
@@ -51,39 +40,47 @@ resource "aws_route_table" "public_route_table" {
   }
 }
 
-resource "aws_route_table_association" "public-1" {
-  subnet_id      = aws_subnet.public-1.id
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public_route_table.id
 }
 
-resource "aws_route_table_association" "public-2" {
-  subnet_id      = aws_subnet.public-2.id
-  route_table_id = aws_route_table.public_route_table.id
-}
-
-resource "aws_security_group" "default_sg" {
+resource "aws_security_group" "master_sg" {
   vpc_id = aws_vpc.main_vpc.id
-  name   = "main_sg-${var.ENVIRONMENT}"
+  name   = "master_sg-${var.ENVIRONMENT}"
 
-  ingress {
-    from_port   = 21
-    to_port     = 21
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = var.MASTER_INGRESS_RULES
+    content {
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+      security_groups = ingress.value.security_groups
+    }
   }
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+resource "aws_security_group" "worker_sg" {
+  vpc_id = aws_vpc.main_vpc.id
+  name   = "worker_sg-${var.ENVIRONMENT}"
+
+  dynamic "ingress" {
+    for_each = var.WORKER_INGRESS_RULES
+    content {
+      from_port   = ingress.value.from_port
+      to_port     = ingress.value.to_port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+      security_groups = ingress.value.security_groups
+    }
   }
 
   egress {

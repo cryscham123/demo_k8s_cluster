@@ -1,9 +1,0 @@
-#!myansible/bin/ansible-playbook
-
-- hosts: "ENV_{{ ENVIRONMENT | default('DEV') }}"
-  become: True
-  # roles:
-  #   - role: common
-  tasks:
-    - debug:
-        var: ansible_os_family
